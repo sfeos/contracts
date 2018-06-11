@@ -17,6 +17,12 @@ namespace SFEPOS {
              * characters a-z, 1-5,  and '.' for the first 12 characters. If there is a 13th character then 
              * it is restricted to the first 16 characters ('.' and a-p). 
              **/
+
+            /**
+             * Creates a new recipe.  Will be called by the contract owner to set up recipes and the required
+             * ingredients.  After calling this function the addingr action should be called to add ingredients
+             * into the receipe. 
+             */
             void addrecipe(uint64_t _resource_id, string _name) {
                 // Can only be invoked by contract owner
                 require_auth(_self);
@@ -38,6 +44,13 @@ namespace SFEPOS {
 
             }
 
+            /**
+             * Adds an ingredient to a receipe created with the addrecipe action
+             * 
+             * _resource_id     -- the ID fo the recipe to add this ingredient to.
+             * _ingredient_id   -- the ID of the ingredient.
+             * _quantity        -- the quantity of the ingredient required to craft the recipe.
+             */
             void addingr(uint64_t _resource_id, uint64_t _ingredient_id, uint64_t _quantity) {
                 // Can only be invoked by contract owner
                 require_auth(_self);
@@ -75,6 +88,13 @@ namespace SFEPOS {
                 });
             }
 
+            /**
+             * Mints a new resource and assigns it the contract owner.
+             * 
+             * _resource_id     -- the ID of the resource to mint.
+             * _name            -- the name of the resource to mint.
+             * _quantity        -- the quantity of the resource to mint.
+             */
             void mint(uint64_t _resource_id, string _name, uint64_t _quantity) {
                 // Can only be invoked by contract owner
                 require_auth(_self);
@@ -96,6 +116,16 @@ namespace SFEPOS {
                 });
             }
 
+            /**
+             * Crafts a resource and assigns it to the specified account.  The owner must have
+             * the necessary ingredients and required quantities for the craft action to succeed.
+             * 
+             * account      -- the account that will become the owner of the resource.
+             * _resource_id -- the ID of the resource to craft.
+             * _quantity    -- the quantity of the resource to craft.
+             * 
+             * TODO: figure out how to handle non-fungible resources. 
+             */
             void craft(const account_name account, uint64_t _resource_id, uint64_t _quantity) {
                 // Can only be invoked by cafter
                 require_auth(account);
@@ -103,7 +133,9 @@ namespace SFEPOS {
                 
             }
 
-
+            /**
+             * Returns the details of the recipe in JSON format.
+             */
             void getrecipe(uint64_t _resource_id) {
                 // Can be invoked by anybody 
 
