@@ -8,6 +8,7 @@ namespace SFEOS {
         using contract::contract;
 
         public:
+            const static uint32_t MaxIngredients = 5;
 
             Resources(account_name self):contract(self) {}
 
@@ -64,7 +65,7 @@ namespace SFEOS {
 
                 // Get a reference to the recipe
                 auto currentRecipe = recipes.get(_resource_id);
-                eosio_assert(currentRecipe.ingredient_count < 5, "Recipe already has the maximum number of ingredients");
+                eosio_assert(currentRecipe.ingredient_count < MaxIngredients, "Recipe already has the maximum number of ingredients");
 
                 recipes.modify(iterator, _self, [&](auto& _recipe) {
                     _recipe.ingredient_count++;
@@ -73,18 +74,7 @@ namespace SFEOS {
                     _ingredient.resource_id = _ingredient_id;
                     _ingredient.quantity = _quantity;
 
-                    switch(_recipe.ingredient_count) {
-                        case 1:
-                            _recipe.ingredient1 = _ingredient; break;
-                        case 2:
-                            _recipe.ingredient2 = _ingredient; break;
-                        case 3:
-                            _recipe.ingredient3 = _ingredient; break;
-                        case 4:
-                            _recipe.ingredient4 = _ingredient; break;
-                        case 5:
-                            _recipe.ingredient5 = _ingredient; break;
-                    }
+                    _recipe.ingredients.push_back(_ingredient);
                 });
             }
 
@@ -147,15 +137,28 @@ namespace SFEOS {
 
                 // Get a reference to the recipe
                 auto currentRecipe = recipes.get(_resource_id);
+
+                // Convert into JSON
+                std::string ingredients_str;
+                ingredients_str.append("[ ");
+                for(auto it = currentRecipe.ingredients.begin(); it != currentRecipe.ingredients.end(); it++ ) {
+                    
+                    if(it != currentRecipe.ingredients.begin())
+                        ingredients_str.append(", ");
+
+                    ingredients_str.append("{ \"resource_id\": ");
+                    ingredients_str.append( std::to_string( (*it).resource_id ) );
+                    ingredients_str.append(", \"quantity\": ");
+                    ingredients_str.append( std::to_string( (*it).quantity ) );
+                    ingredients_str.append(" }");
+                }
+                ingredients_str.append(" ]");
+
                 print("{ ", 
                         "\"name\": \"", currentRecipe.name.c_str(), "\", ", 
                         "\"resource_id\": ", currentRecipe.resource_id, ", ",
                         "\"ingredient_count\": ", currentRecipe.ingredient_count, ", ",
-                        "\"ingredient1\": { \"resource_id\": ", currentRecipe.ingredient1.resource_id, ", \"quantity\": ", currentRecipe.ingredient1.quantity, " }, ",
-                        "\"ingredient2\": { \"resource_id\": ", currentRecipe.ingredient2.resource_id, ", \"quantity\": ", currentRecipe.ingredient2.quantity, " }, ",
-                        "\"ingredient3\": { \"resource_id\": ", currentRecipe.ingredient3.resource_id, ", \"quantity\": ", currentRecipe.ingredient3.quantity, " }, ",
-                        "\"ingredient4\": { \"resource_id\": ", currentRecipe.ingredient4.resource_id, ", \"quantity\": ", currentRecipe.ingredient4.quantity, " }, ",
-                        "\"ingredient5\": { \"resource_id\": ", currentRecipe.ingredient5.resource_id, ", \"quantity\": ", currentRecipe.ingredient5.quantity, " } ",
+                        "\"ingredients\":", ingredients_str,
                       " }");
             }
 
@@ -177,18 +180,11 @@ namespace SFEOS {
                 uint64_t resource_id;
                 string name;
                 uint32_t ingredient_count;
-                
-                // Types can only be: vector, struct, class or a built-in type
-                // Ugly workaround 
-                ingredient ingredient1;
-                ingredient ingredient2;
-                ingredient ingredient3;
-                ingredient ingredient4;
-                ingredient ingredient5;
+                vector<ingredient> ingredients;
 
                 uint64_t primary_key() const { return resource_id; }
 
-                EOSLIB_SERIALIZE(recipe, (resource_id)(name)(ingredient_count)(ingredient1)(ingredient2)(ingredient3)(ingredient4)(ingredient5))
+                EOSLIB_SERIALIZE(recipe, (resource_id)(name)(ingredient_count)(ingredients))
             };
 
             //@abi table resource i64
