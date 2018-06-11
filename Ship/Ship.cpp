@@ -28,23 +28,23 @@ namespace SFEPOS {
 
                 /**
                  * We must verify that the account doesn't exist yet
-                 * If the account is not found the iterator variable should be players.end()
+                 * If the account is not found the iterator variable should be ships.end()
                  */
                 auto iterator = ships.find(account);
                 eosio_assert(iterator == ships.end(), "Address for account already exists");
 
                 /**
-                 * We add the new player in the table
+                 * We add the new ship in the table
                  * The first argument is the payer of the storage which will store the data
                  */
-                ships.emplace(account, [&](auto& player) {
-                    player.account_name = account;
-                    player.name = name;
-                    player.x = 0;
-                    player.y = 0;
-                    player.ghosted = 0;
-                    player.health = MaxHealth;
-                    player.energy = MaxEnergy;
+                ships.emplace(account, [&](auto& _ship) {
+                    _ship.account_name = account;
+                    _ship.name = name;
+                    _ship.x = 0;
+                    _ship.y = 0;
+                    _ship.ghosted = 0;
+                    _ship.health = MaxHealth;
+                    _ship.energy = MaxEnergy;
                 });
             }
 
