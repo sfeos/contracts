@@ -1,6 +1,6 @@
 #include "Resources.hpp"
 
-namespace SFEPOS {
+namespace SFEOS {
     using namespace eosio;
     using std::string;
 
