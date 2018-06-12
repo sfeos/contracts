@@ -20,33 +20,32 @@ namespace SFEOS {
              **/
 
             /**
-             * Creates a new recipe.  Will be called by the contract owner to set up recipes and the required
+             * Creates a new resource.  Will be called by the contract owner to set up recipes and the required
              * ingredients.  After calling this function the addingr action should be called to add ingredients
              * into the receipe. 
              */
-            void addrecipe(uint64_t _resource_id, string _name) {
+            void addresource(uint64_t _resource_id, string _name) {
                 // Can only be invoked by contract owner
                 require_auth(_self);
 
                 // Load table 
-                recipeIndex recipes(_self, _self);
+                resources_table resources(_self, _self);
 
                 // Make sure there isn't already a receipe for this resource
-                auto iterator = recipes.find(_resource_id);
-                eosio_assert(iterator == recipes.end(), "ID for resource already exists in recipes index");
+                auto iterator = resources.find(_resource_id);
+                eosio_assert(iterator == resources.end(), "ID for resource already exists in resources index");
 
                 // Insert the recipe.  
                 // First argument is the account name of the "payer of the storage." 
-                recipes.emplace(_self, [&](auto& _receipe) {
-                    _receipe.resource_id = _resource_id;
-                    _receipe.name = _name;
-                    _receipe.ingredient_count = 0;
+                resources.emplace(_self, [&](auto& _resource) {
+                    _resource.resource_id = _resource_id;
+                    _resource.name = _name;
+                    _resource.crafting_recipe.ingredient_count = 0;
                 });
-
             }
 
             /**
-             * Adds an ingredient to a receipe created with the addrecipe action
+             * Adds an ingredient to a resource receipe.  Resource must have been created with the addresource action.
              * 
              * _resource_id     -- the ID fo the recipe to add this ingredient to.
              * _ingredient_id   -- the ID of the ingredient.
@@ -57,24 +56,24 @@ namespace SFEOS {
                 require_auth(_self);
 
                 // Load table 
-                recipeIndex recipes(_self, _self);
+                resources_table resources(_self, _self);
 
                 // Make sure the recipe is there
-                auto iterator = recipes.find(_resource_id);
-                eosio_assert(iterator != recipes.end(), "Recipe not found");
+                auto iterator = resources.find(_resource_id);
+                eosio_assert(iterator != resources.end(), "Resource not found");
 
                 // Get a reference to the recipe
-                auto currentRecipe = recipes.get(_resource_id);
-                eosio_assert(currentRecipe.ingredient_count < MaxIngredients, "Recipe already has the maximum number of ingredients");
+                auto current_resource = resources.get(_resource_id);
+                eosio_assert(current_resource.crafting_recipe.ingredient_count < MaxIngredients, "Recipe already has the maximum number of ingredients");
 
-                recipes.modify(iterator, _self, [&](auto& _recipe) {
-                    _recipe.ingredient_count++;
+                resources.modify(iterator, _self, [&](auto& _resource) {
+                    _resource.crafting_recipe.ingredient_count++;
 
                     ingredient _ingredient;
                     _ingredient.resource_id = _ingredient_id;
                     _ingredient.quantity = _quantity;
 
-                    _recipe.ingredients.push_back(_ingredient);
+                    _resource.crafting_recipe.ingredients.push_back(_ingredient);
                 });
             }
 
@@ -85,25 +84,38 @@ namespace SFEOS {
              * _name            -- the name of the resource to mint.
              * _quantity        -- the quantity of the resource to mint.
              */
-            void mint(uint64_t _resource_id, string _name, uint64_t _quantity) {
+            void mint(uint64_t _resource_id, uint64_t _quantity) {
                 // Can only be invoked by contract owner
                 require_auth(_self);
 
-                resourceIndex resources(_self, _self);
+                resource_ownership_table ownership(_self, _self);
 
 
-                // Make sure there isn't already a receipe for this resource
-                // TODO: allow adding additional resources when record exists.
-                auto iterator = resources.find(_resource_id);
-                eosio_assert(iterator == resources.end(), "ID for resource already exists in resources index");
+                auto iterator = ownership.find(_self);
+                if(iterator != ownership.end()) {
+                    // Add new resource to exitsing record
+                    ownership.modify(ownership.get(_self), _self, [&](auto& _ownership) {
 
-                // Insert the resource.  
-                resources.emplace(_self, [&](auto& _resource) {
-                    _resource.resource_id = _resource_id;
-                    _resource.name = _name;
-                    _resource.owner = _self;
-                    _resource.quantity_owned = _quantity;
-                });
+                        resource_quantity qty;
+                        qty.resource_id = _resource_id;
+                        qty.quantity = _quantity;
+
+                        // TODO: support when it's already in the vector
+                        _ownership.resources.push_back(qty);
+                    });
+                }
+                else {
+                    // Insert the record.  
+                    ownership.emplace(_self, [&](auto& _ownership) {
+                        _ownership.owner = _self;
+
+                        resource_quantity qty;
+                        qty.resource_id = _resource_id;
+                        qty.quantity = _quantity;
+
+                        _ownership.resources.push_back(qty);
+                    });
+                }
             }
 
             /**
@@ -120,46 +132,144 @@ namespace SFEOS {
                 // Can only be invoked by cafter
                 require_auth(account);
 
+                // Load the resource for the resource we are crafting.
+                resources_table resources(_self, _self);
+
+                auto iterator = resources.find(_resource_id);
+                eosio_assert(iterator != resources.end(), "Resouce not found");
+
+                auto current_resource = resources.get(_resource_id);
+
+                // Load the list of resources that this account has.
+                resource_ownership_table ownership(_self, _self); 
+
+                auto iterator1 = ownership.find(account);
+                eosio_assert(iterator1 != ownership.end(), "Account not found");
+
+                auto owner_resources = ownership.get(account);
+
+                // Modify the resource counts of the account to produce the crafted resource. 
+                for(auto it = current_resource.crafting_recipe.ingredients.begin(); it != current_resource.crafting_recipe.ingredients.end(); it++ ) {
+                    bool found = false;
+
+                    for( const auto& item : owner_resources.resources ) {
+                        if(item.resource_id == it->resource_id) {
+                            found = true;
+
+                            eosio_assert(it->quantity * _quantity >= item.quantity,
+                                         "Insufficient quantity of ingredient");
+
+                            // Decrement the quantity of this ingredient from the account's resources
+                            ownership.modify(owner_resources, _self, [&](auto& _owner_record) {
+                                for( auto& _res : _owner_record.resources ) {
+                                    if(_res.resource_id == it->resource_id) {
+                                        _res.quantity -= it->quantity * _quantity;
+                                    }
+                                }
+                            });
+                            break;
+                        }
+                    }
+
+                    eosio_assert(found, "Could not find necessary ingredient");
+                }
+
+                // Assign the crafted resource to the account
+                
+                // TODO: support when it's already in the vector
+                ownership.modify(owner_resources, _self, [&](auto& _ownership) {
+
+                    resource_quantity qty;
+                    qty.resource_id = _resource_id;
+                    qty.quantity = _quantity;
+
+                    _ownership.resources.push_back(qty);
+                });
+                
                 
             }
 
             /**
-             * Returns the details of the recipe in JSON format.
+             * Returns the details of the resource in JSON format.
+             * 
+             * Can be invoked by anybody.
              */
-            void getrecipe(uint64_t _resource_id) {
-                // Can be invoked by anybody 
+            void getresource(uint64_t _resource_id) {
 
-                recipeIndex recipes(_self, _self);
+                resources_table resources(_self, _self);
 
                 // Make sure the recipe is there
-                auto iterator = recipes.find(_resource_id);
-                eosio_assert(iterator != recipes.end(), "Recipe not found");
+                auto iterator = resources.find(_resource_id);
+                eosio_assert(iterator != resources.end(), "Recipe not found");
 
                 // Get a reference to the recipe
-                auto currentRecipe = recipes.get(_resource_id);
+                auto current_resource = resources.get(_resource_id);
 
                 // Convert into JSON
                 std::string ingredients_str;
                 ingredients_str.append("[ ");
-                for(auto it = currentRecipe.ingredients.begin(); it != currentRecipe.ingredients.end(); it++ ) {
+                for(auto it = current_resource.crafting_recipe.ingredients.begin(); it != current_resource.crafting_recipe.ingredients.end(); it++ ) {
                     
-                    if(it != currentRecipe.ingredients.begin())
+                    if(it != current_resource.crafting_recipe.ingredients.begin())
                         ingredients_str.append(", ");
 
                     ingredients_str.append("{ \"resource_id\": ");
-                    ingredients_str.append( std::to_string( (*it).resource_id ) );
+                    ingredients_str.append( std::to_string( it->resource_id ) );
                     ingredients_str.append(", \"quantity\": ");
-                    ingredients_str.append( std::to_string( (*it).quantity ) );
+                    ingredients_str.append( std::to_string( it->quantity ) );
                     ingredients_str.append(" }");
                 }
                 ingredients_str.append(" ]");
 
                 print("{ ", 
-                        "\"name\": \"", currentRecipe.name.c_str(), "\", ", 
-                        "\"resource_id\": ", currentRecipe.resource_id, ", ",
-                        "\"ingredient_count\": ", currentRecipe.ingredient_count, ", ",
-                        "\"ingredients\":", ingredients_str,
+                        "\"name\": \"", current_resource.name.c_str(), "\", ", 
+                        "\"resource_id\": ", current_resource.resource_id, ", ",
+                        "\"crafting_recipe\": { ",
+                          "\"ingredient_count\": ", current_resource.crafting_recipe.ingredient_count, ", ",
+                          "\"ingredients\":", ingredients_str,
+                        " }"
                       " }");
+            }
+
+            /**
+             * Returns an inventory of resources for the associated account in JSON format.
+             * 
+             * Can be invoked by anybody.
+             */ 
+            void getinventory(const account_name account) {
+                
+                resource_ownership_table ownership(_self, _self);
+
+                auto iterator = ownership.find(account);
+                eosio_assert(iterator != ownership.end(), "Account not found");
+
+                // Create JSON string that will be returned
+                std::string json;
+                json.append("[ ");
+
+                // Load all resources associated with the specified account using the "byowner" index.
+                auto ownership_record = ownership.get(account);
+
+                // Iterate through owned resources in the vector 
+                int i = 0;
+                for(auto it = ownership_record.resources.begin(); it != ownership_record.resources.end(); it++,i++ )    {
+
+                    if(i > 0)
+                        json.append(", ");
+
+                    json.append("{ ");
+
+                    json.append("\"resource_id\": ");
+                    json.append( std::to_string( it->resource_id ) );
+
+                    json.append(", \"quantity_owned\": ");
+                    json.append( std::to_string( it->quantity ) );
+
+                    json.append(" }");
+                } 
+
+                json.append(" ]");
+                print(json);
             }
 
         private:
@@ -167,7 +277,6 @@ namespace SFEOS {
              ** struct definitions
              **********************************/
 
-            //@abi table ingredient i64
             struct ingredient {
                 uint64_t resource_id;
                 uint64_t quantity;
@@ -175,41 +284,50 @@ namespace SFEOS {
                 EOSLIB_SERIALIZE(ingredient, (resource_id)(quantity))
             };
 
-            //@abi table recipe i64
             struct recipe {
-                uint64_t resource_id;
-                string name;
                 uint32_t ingredient_count;
                 vector<ingredient> ingredients;
 
-                uint64_t primary_key() const { return resource_id; }
+                // Other crafting requirements, like skill level, go here...
 
-                EOSLIB_SERIALIZE(recipe, (resource_id)(name)(ingredient_count)(ingredients))
+                EOSLIB_SERIALIZE(recipe, (ingredient_count)(ingredients))
             };
 
             //@abi table resource i64
             struct resource {
                 uint64_t resource_id;
                 string name;
-                uint64_t owner;
-                uint64_t quantity_owned;
-                
-                // TODO: can we store custom attributes in the database?
+                recipe crafting_recipe;
 
                 uint64_t primary_key() const { return resource_id; }
-                account_name get_owner() const { return owner; }
 
-                EOSLIB_SERIALIZE(resource, (resource_id)(name)(owner)(quantity_owned))
+                EOSLIB_SERIALIZE(resource, (resource_id)(name)(crafting_recipe))
+            };
+
+            struct resource_quantity {
+                uint64_t resource_id;
+                uint64_t quantity;
+
+                EOSLIB_SERIALIZE(resource_quantity, (resource_id)(quantity))
+            };
+
+            //@abi table res_owner i64
+            struct res_owner {
+                account_name owner;
+                vector<resource_quantity> resources;
+
+                uint64_t primary_key() const { return owner; }
+
+                EOSLIB_SERIALIZE(res_owner, (owner)(resources))
             };
 
             /***********************************
              ** index declarations 
              **********************************/
-            typedef multi_index<N(recipe), recipe> recipeIndex;
-            typedef multi_index<N(resource), resource,
-                indexed_by<N(byowner), const_mem_fun<resource, uint64_t, &resource::get_owner> > > resourceIndex;
+            typedef multi_index<N(resource), resource> resources_table;
+            typedef multi_index<N(res_owner), res_owner> resource_ownership_table;
 
     };
 
-    EOSIO_ABI(Resources, (addrecipe)(addingr)(mint)(craft)(getrecipe))
+    EOSIO_ABI(Resources, (addresource)(addingr)(mint)(craft)(getresource)(getinventory))
 }

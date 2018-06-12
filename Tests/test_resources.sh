@@ -11,7 +11,7 @@ echo "Launching nodeos..."
 
 nodeos -e -p eosio --plugin eosio::wallet_api_plugin --plugin eosio::chain_api_plugin --plugin eosio::history_api_plugin --contracts-console --delete-all-blocks > /dev/null 2>&1 &
 
-sleep 12
+sleep 6
 RES=0
 
 echo "Started nodeos..."
@@ -22,27 +22,31 @@ if [ $? -ne 0 ]; then { echo "ERROR: Failed to install contract." ; kill $! ; ex
 
 echo "Installed contract..."
 
-cleos push action sfeos addrecipe '[1, "Oxygen"]' -p sfeos@active
-cleos push action sfeos addrecipe '[2, "Hydrogen"]' -p sfeos@active
-cleos push action sfeos addrecipe '[3, "Water"]' -p sfeos@active
+cleos push action sfeos addresource '[1, "Oxygen"]' -p sfeos@active
+cleos push action sfeos addresource '[2, "Hydrogen"]' -p sfeos@active
+cleos push action sfeos addresource '[3, "Water"]' -p sfeos@active
 
 # require 1 oxygen and 2 hyrogen
 cleos push action sfeos addingr '[3, 1, 1]' -p sfeos@active
 cleos push action sfeos addingr '[3, 2, 1]' -p sfeos@active
 
 # mint initial resources
-cleos push action sfeos mint '[1, "Oxygen", 1]' -p sfeos@active
-cleos push action sfeos mint '[2, "Hydrogen", 2]' -p sfeos@active
+cleos push action sfeos mint '[1, 1]' -p sfeos@active
+cleos push action sfeos mint '[2, 2]' -p sfeos@active
 
 
 
 #if [ $? -ne 0 ]; then { echo "ERROR: Failed to add recipe." ; RES=1; } fi
 
 
-cleos push action sfeos getrecipe '[3]' -p sfeos@active
+cleos push action sfeos getresource '[3]' -p sfeos@active
 if [ $? -ne 0 ]; then { echo "ERROR: Failed to get recipe." ; RES=1; } fi
 
+cleos push action sfeos craft '["sfeos", 3, 1]' -p sfeos@active
+if [ $? -ne 0 ]; then { echo "ERROR: Failed to craft resource." ; RES=1; } fi
 
+cleos push action sfeos getinventory '["sfeos"]' -p sfeos@active
+if [ $? -ne 0 ]; then { echo "ERROR: Failed to get resources." ; RES=1; } fi
 
 kill $!
 
