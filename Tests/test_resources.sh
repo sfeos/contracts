@@ -28,7 +28,7 @@ cleos push action sfeos addresource '[3, "Water"]' -p sfeos@active
 
 # require 1 oxygen and 2 hyrogen
 cleos push action sfeos addingr '[3, 1, 1]' -p sfeos@active
-cleos push action sfeos addingr '[3, 2, 1]' -p sfeos@active
+cleos push action sfeos addingr '[3, 2, 2]' -p sfeos@active
 
 # mint initial resources
 cleos push action sfeos mint '[1, 1]' -p sfeos@active

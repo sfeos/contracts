@@ -3142,7 +3142,7 @@
         )
        )
        (call $eosio_assert
-        (i64.ge_u
+        (i64.le_u
          (i64.mul
           (i64.load offset=160
            (get_local $11)
@@ -3159,6 +3159,16 @@
          )
         )
         (i32.const 672)
+       )
+       (set_local $9
+        (call $_ZNK5eosio11multi_indexILy13452263573488664576EN5SFEOS9Resources9res_ownerEJEE3getEyPKc
+         (i32.add
+          (get_local $11)
+          (i32.const 40)
+         )
+         (get_local $1)
+         (i32.const 224)
+        )
        )
        (set_local $2
         (i64.load
@@ -3184,10 +3194,7 @@
          (get_local $11)
          (i32.const 40)
         )
-        (i32.add
-         (get_local $11)
-         (i32.const 16)
-        )
+        (get_local $9)
         (get_local $2)
         (get_local $11)
        )
@@ -3226,6 +3233,16 @@
       (br $label$7)
      )
     )
+    (set_local $9
+     (call $_ZNK5eosio11multi_indexILy13452263573488664576EN5SFEOS9Resources9res_ownerEJEE3getEyPKc
+      (i32.add
+       (get_local $11)
+       (i32.const 40)
+      )
+      (get_local $1)
+      (i32.const 224)
+     )
+    )
     (set_local $2
      (i64.load
       (get_local $0)
@@ -3250,10 +3267,7 @@
       (get_local $11)
       (i32.const 40)
      )
-     (i32.add
-      (get_local $11)
-      (i32.const 16)
-     )
+     (get_local $9)
      (get_local $2)
      (get_local $11)
     )

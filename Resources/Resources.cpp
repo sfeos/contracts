@@ -156,11 +156,11 @@ namespace SFEOS {
                         if(item.resource_id == it->resource_id) {
                             found = true;
 
-                            eosio_assert(it->quantity * _quantity >= item.quantity,
+                            eosio_assert(it->quantity * _quantity <= item.quantity,
                                          "Insufficient quantity of ingredient");
 
                             // Decrement the quantity of this ingredient from the account's resources
-                            ownership.modify(owner_resources, _self, [&](auto& _owner_record) {
+                            ownership.modify(ownership.get(account), _self, [&](auto& _owner_record) {
                                 for( auto& _res : _owner_record.resources ) {
                                     if(_res.resource_id == it->resource_id) {
                                         _res.quantity -= it->quantity * _quantity;
@@ -177,7 +177,7 @@ namespace SFEOS {
                 // Assign the crafted resource to the account
                 
                 // TODO: support when it's already in the vector
-                ownership.modify(owner_resources, _self, [&](auto& _ownership) {
+                ownership.modify(ownership.get(account), _self, [&](auto& _ownership) {
 
                     resource_quantity qty;
                     qty.resource_id = _resource_id;
