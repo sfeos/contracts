@@ -88,34 +88,13 @@ namespace SFEOS {
                 // Can only be invoked by contract owner
                 require_auth(_self);
 
-                resource_ownership_table ownership(_self, _self);
+                resources_table resources(_self, _self);
 
+                // Make sure the resource exists
+                auto iterator = resources.find(_resource_id);
+                eosio_assert(iterator != resources.end(), "Resource not found");
 
-                auto iterator = ownership.find(_self);
-                if(iterator != ownership.end()) {
-                    // Add new resource to exitsing record
-                    ownership.modify(ownership.get(_self), _self, [&](auto& _ownership) {
-
-                        resource_quantity qty;
-                        qty.resource_id = _resource_id;
-                        qty.quantity = _quantity;
-
-                        // TODO: support when it's already in the vector
-                        _ownership.resources.push_back(qty);
-                    });
-                }
-                else {
-                    // Insert the record.  
-                    ownership.emplace(_self, [&](auto& _ownership) {
-                        _ownership.owner = _self;
-
-                        resource_quantity qty;
-                        qty.resource_id = _resource_id;
-                        qty.quantity = _quantity;
-
-                        _ownership.resources.push_back(qty);
-                    });
-                }
+                updateResource(_self, _resource_id, _quantity);
             }
 
             /**
@@ -150,42 +129,13 @@ namespace SFEOS {
 
                 // Modify the resource counts of the account to produce the crafted resource. 
                 for(auto it = current_resource.crafting_recipe.ingredients.begin(); it != current_resource.crafting_recipe.ingredients.end(); it++ ) {
-                    bool found = false;
 
-                    for( const auto& item : owner_resources.resources ) {
-                        if(item.resource_id == it->resource_id) {
-                            found = true;
+                    updateResource(account, it->resource_id, -1 * it->quantity * _quantity);
 
-                            eosio_assert(it->quantity * _quantity <= item.quantity,
-                                         "Insufficient quantity of ingredient");
-
-                            // Decrement the quantity of this ingredient from the account's resources
-                            ownership.modify(ownership.get(account), _self, [&](auto& _owner_record) {
-                                for( auto& _res : _owner_record.resources ) {
-                                    if(_res.resource_id == it->resource_id) {
-                                        _res.quantity -= it->quantity * _quantity;
-                                    }
-                                }
-                            });
-                            break;
-                        }
-                    }
-
-                    eosio_assert(found, "Could not find necessary ingredient");
                 }
 
                 // Assign the crafted resource to the account
-                
-                // TODO: support when it's already in the vector
-                ownership.modify(ownership.get(account), _self, [&](auto& _ownership) {
-
-                    resource_quantity qty;
-                    qty.resource_id = _resource_id;
-                    qty.quantity = _quantity;
-
-                    _ownership.resources.push_back(qty);
-                });
-                
+                updateResource(account, _resource_id, _quantity);
                 
             }
 
@@ -273,6 +223,54 @@ namespace SFEOS {
             }
 
         private:
+            void updateResource(account_name account, uint64_t _resource_id, int64_t _quantity) {
+                resource_ownership_table ownership(_self, _self);
+
+                auto iterator = ownership.find(account);
+                if(iterator != ownership.end()) {
+                    // Modify resource on exitsing record
+                    bool found = false;
+
+                    ownership.modify(iterator, _self, [&](auto& _ownership) {
+
+                        for( auto& _res : _ownership.resources ) {
+                            if(_res.resource_id == _resource_id) {
+                                
+                                int64_t result = _res.quantity + _quantity;
+                                eosio_assert(result >= 0, "Can not have negative quantity of resource");
+
+                                _res.quantity = result;
+                                found = true;
+                            }
+                        }
+
+                        if(found == false) {
+                            resource_quantity qty;
+                            qty.resource_id = _resource_id;
+                            qty.quantity = _quantity;
+
+                            eosio_assert(_quantity >= 0, "Can not have negative quantity of resource");
+
+                            _ownership.resources.push_back(qty);
+                        }
+                    });
+                }
+                else {
+                    // Insert the record.  
+                    ownership.emplace(_self, [&](auto& _ownership) {
+                        _ownership.owner = _self;
+
+                        resource_quantity qty;
+                        qty.resource_id = _resource_id;
+                        qty.quantity = _quantity;
+
+                        eosio_assert(_quantity >= 0, "Can not have negative quantity of resource");
+
+                        _ownership.resources.push_back(qty);
+                    });
+                }
+            }
+
             /***********************************
              ** struct definitions
              **********************************/
