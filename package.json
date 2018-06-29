@@ -1,0 +1,18 @@
+{
+  "name": "SFEOS",
+  "version": "1.0.0",
+  "description": "",
+  "main": "Tests/test-server.js",
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "scripts": {
+    "start": "node Tests/test-server.js --init"
+  },
+  "dependencies": {
+    "child_process": "^1.0.2",
+    "eosjs": "^15.0.3",
+    "express": "^4.16.3",
+    "fs": "0.0.1-security"
+  }
+}

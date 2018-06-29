@@ -1,0 +1,121 @@
+<html>
+<head>
+  <title>SFEOS Test App</title>
+  <meta charset="utf-8">
+  <script src="https://code.jquery.com/jquery-3.3.1.min.js" integrity="sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8=" crossorigin="anonymous"></script>
+  <script src="eos.js"></script>
+  <script>
+  /* 
+   * -- Pre-requisites -- 
+   * 
+   * 1) Enable CORS headers in nodeos HTTP plugin.  To do so, open config.ini and add:
+   *    access-control-allow-origin = *
+   * 
+   * 2) Replace chainId with the chain ID of the blockchain you are testing with.  To get that issue this command:
+   *    cleos get info
+   * 
+   * 3) Unlock your wallet and obtain the public and private keys from it.  
+   *    First call: cleos wallet unlock --password ...
+   *    Then call: cleos wallet private_keys
+   */
+  var chainId = 'cf057bbfb72640471fd910bcb67639c22df9f92470936cddc1ade0e2f2e7dc4f';
+  var account = 'sfeos.res';
+
+  var eos;
+
+  function init() {
+    eos = Eos({
+      httpEndpoint: 'http://localhost:8888',
+      chainId: chainId,
+      verbose: true,
+      keyProvider: [ $("#privateKey").val() ]
+    });
+  }
+
+
+  function createResource() {
+    var options = {
+      authorization: 'sfeos.res@active',
+      broadcast: true,
+      sign: true
+    }
+
+    eos.contract('sfeos.res').then(sfeos => { 
+      sfeos.addresource( $("#newResourceID").val(),  $("#newResourceName").val(), options )
+           .then(() => { getResources() } ); 
+    });
+  }
+
+  function getResources() {
+    var args = {
+        code: 'sfeos.res',
+        table:'resource',
+        json: true,
+        lower_bound: 1,
+        upper_bound: 100
+    };
+
+    eos.getTableRows(true, 'sfeos.res', 'sfeos.res', 'resource', 1).then(function(res) {
+      console.log(res);
+
+      $("#resources").empty();
+
+      for(var i = 0; i < res.rows.length; i++) {
+
+        $("#resources")
+          .append($('<tr>')
+              .append($('<td>') .text(res.rows[i].name) )
+          );
+      }
+      
+    });
+  }
+
+
+  $( document ).ready(function() {
+    init();
+    getResources();
+  });
+
+
+
+  </script>
+</head>
+<body>
+  <table>
+    <tr>
+      <td>Public Key</td>
+      <td><input type="text" id="publicKey" value="EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV" style="width: 450px" /></td>
+    </tr>
+    <tr>
+      <td>Private Key</td>
+      <td><input type="text" id="privateKey" value="5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3" style="width: 450px" /></td>
+    </tr>
+    <tr>
+      <td colspan="2">&nbsp;</td>
+    </tr>
+    <tr>
+      <td colspan="2">Create Resource</td>
+    </tr>
+    <tr>
+      <td>ID</td>
+      <td><input type="text" id="newResourceID" value="1" style="width: 50px" /></td>
+    </tr>
+
+    <tr>
+      <td>Name</td>
+      <td><input type="text" id="newResourceName" value="" style="width: 250px" /></td>
+    </tr>
+    <tr>
+      <td colspan="2">
+        <input type="button" value="Create Resource" onclick="createResource()">
+      </td>
+    </tr>
+  </table>
+
+  <h2>Resources</h2>
+  <table id="resources">
+    <tbody></tbody>
+  </table>
+</body>
+</html>
