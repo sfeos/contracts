@@ -10,12 +10,13 @@ var path = require('path');
 var app = express();
 const { spawn } = require('child_process');
 var EosLib = require('eosjs');
+var recipes = require('./recipes');
 
 var eos;
 var privateKey = "5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3";
 var publicKey = "EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV";
 var chainId = 'cf057bbfb72640471fd910bcb67639c22df9f92470936cddc1ade0e2f2e7dc4f';
-
+var contracts = {};
 
 var init = false;
 var args = process.argv.slice(2);
@@ -80,7 +81,9 @@ function initContracts() {
     console.log("Initializing accounts and contracts...");
 
     return initContract('res', './Resources/Resources')
-          .then(() => initContract('ship', './Ship/Ship') );
+          .then(() => initContract('ship', './Ship/Ship'))
+          .then(() => loadResources())
+          .then(() => loadAllRecipes());
 
 }
 
@@ -91,7 +94,9 @@ function initContract(name, path) {
 
     return createAccount(account, publicKey)
         .then(() => eos.setcode(account, 0, 0, wasm))
-        .then(() => eos.setabi(account, JSON.parse(abi)));
+        .then(() => eos.setabi(account, JSON.parse(abi)))
+        .then(() => eos.contract(account))
+        .then((con) => contracts[account] = con);
 }
 
 function createAccount(name, pub) {
@@ -104,6 +109,52 @@ function createAccount(name, pub) {
         });
     });
 }
+
+
+function loadResources() {
+    var all = [];
+    for(var key in recipes.resources) {
+        var res = recipes.resources[key];
+        all.push(createResource('sfeos.res', res.id, res.name));
+    }
+    
+    return Promise.all(all);
+}
+
+function createResource(account, id, name) {
+    var options = {
+        authorization: account + '@active',
+        broadcast: true,
+        sign: true
+    }
+
+    return contracts[account].addresource(id,  name, options);
+}
+
+function loadAllRecipes() {
+    var account = 'sfeos.res';
+    var options = {
+        authorization: account + '@active',
+        broadcast: true,
+        sign: true
+    }
+
+    var all = [];
+    for(var key in recipes.recipes) {
+        var recipe = recipes.recipes[key];
+        var resourceId = recipes.resources[key].id;
+
+        for(var ingKey in recipe) {
+            var ingredientId = recipes.resources[ingKey].id;
+            var quantity = recipe[ingKey];
+
+            all.push( contracts[account].addingr(resourceId, ingredientId, quantity, options) );
+        }
+    }
+
+    return Promise.all(all);
+}
+
 
 
 function startServer() {
