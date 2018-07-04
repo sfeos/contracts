@@ -36,7 +36,15 @@
   }
 
   function getResources() {
-    return eos.getTableRows(true, account, account, 'resource', 1).then(function(res) {
+
+    return eos.getTableRows({
+      scope: account,
+      code: account,
+      table: 'resource',
+      json: true,
+      lower_bound: 1,
+      limit: 1000
+    }).then(function(res) {
       console.log(res);
 
       resources = { };
@@ -97,7 +105,14 @@
 
 
   function getInentory() {
-    return eos.getTableRows(true, account, account, 'inventory', 1).then(function(res) {
+    return eos.getTableRows({
+      scope: account,
+      code: account,
+      table: 'inventory',
+      json: true,
+      lower_bound: 1,
+      limit: 1000
+    }).then(function(res) {
       console.log(res);
 
       inventory = { };
