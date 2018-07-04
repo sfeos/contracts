@@ -1,0 +1,46 @@
+body {
+    background-color: #080523;
+    color: #e5e3ff;
+    font-family: arial, verdana, sans-serif;
+}
+table {
+    background-color: #1a1548;
+    padding: 10px;
+}
+
+table th {
+    text-align: left;
+    border-bottom: 1px solid #e5e3ff;
+}
+
+table th, table td {
+    font-size: 0.9em;
+    padding: 4px;
+}
+
+h2 {
+    font-weight: 100;
+    margin-bottom: 4px;
+}
+
+.pull-left {
+    float: left;
+}
+
+.pull-right {
+    float: right;
+}
+
+.col-spacer {
+    width: 50px;
+}
+
+.error {
+    color: #e04bc6;
+    padding-top: 5px;
+    padding-bottom: 5px;
+}
+
+#craftQuantity {
+    width: 50px;
+}

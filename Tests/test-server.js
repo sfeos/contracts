@@ -1,8 +1,22 @@
-/**
- * Run "npm install" first!
- * Then npm start
- * 
- */
+  /* 
+   * -- Pre-requisites -- 
+   * 
+   * 1) Enable CORS headers in nodeos HTTP plugin.  To do so, open config.ini and add:
+   *    access-control-allow-origin = *
+   * 
+   * 2) Replace chainId with the chain ID of the blockchain you are testing with.  To get that issue this command:
+   *    cleos get info
+   * 
+   * 3) Unlock your wallet and obtain the public and private keys from it.  
+   *    First call: cleos wallet unlock --password ...
+   *    Then call: cleos wallet private_keys
+   */
+
+  /*
+   * Run "npm install" first!
+   * Then npm start
+   * 
+   */
 
 const fs = require('fs');
 var express = require('express');
@@ -64,6 +78,8 @@ function spawnNodeos() {
         console.log('' + data);
     });
     nodeos.stderr.on('data', (data) => {
+        if(('' + data).indexOf('Produced block') > 0) return; // prevent anoying log messages every 500ms 
+
         console.error('' + data);
     });
 }
@@ -83,7 +99,8 @@ function initContracts() {
     return initContract('res', './Resources/Resources')
           .then(() => initContract('ship', './Ship/Ship'))
           .then(() => loadResources())
-          .then(() => loadAllRecipes());
+          .then(() => loadAllRecipes())
+          .then(() => loadInitialSupply());
 
 }
 
@@ -111,34 +128,29 @@ function createAccount(name, pub) {
 }
 
 
+var resAccount = 'sfeos.res';
+var options = {
+    authorization: resAccount + '@active',
+    broadcast: true,
+    sign: true
+}
+
+
 function loadResources() {
     var all = [];
     for(var key in recipes.resources) {
         var res = recipes.resources[key];
-        all.push(createResource('sfeos.res', res.id, res.name));
+        all.push(createResource(res.id, res.name));
     }
     
     return Promise.all(all);
 }
 
-function createResource(account, id, name) {
-    var options = {
-        authorization: account + '@active',
-        broadcast: true,
-        sign: true
-    }
-
-    return contracts[account].addresource(id,  name, options);
+function createResource(id, name) {
+    return contracts[resAccount].addresource(id,  name, options);
 }
 
 function loadAllRecipes() {
-    var account = 'sfeos.res';
-    var options = {
-        authorization: account + '@active',
-        broadcast: true,
-        sign: true
-    }
-
     var all = [];
     for(var key in recipes.recipes) {
         var recipe = recipes.recipes[key];
@@ -148,13 +160,25 @@ function loadAllRecipes() {
             var ingredientId = recipes.resources[ingKey].id;
             var quantity = recipe[ingKey];
 
-            all.push( contracts[account].addingr(resourceId, ingredientId, quantity, options) );
+            all.push( contracts[resAccount].addingr(resourceId, ingredientId, quantity, options) );
         }
     }
 
     return Promise.all(all);
 }
 
+function loadInitialSupply() {
+    var all = [];
+
+    for(var key in recipes.supply) {
+        var resourceId = recipes.resources[key].id;
+        var quantity = recipes.supply[key];
+
+        all.push( contracts[resAccount].mint(resourceId, quantity, options) );
+    }
+
+    return Promise.all(all);
+}
 
 
 function startServer() {

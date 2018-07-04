@@ -70,4 +70,11 @@ const recipes = {
 
 };
 
-module.exports = { resources: resources, recipes: recipes };
+const supply = {
+  steel:      1000000,
+  aluminium:  1000000,
+  diamond:    1000000,
+  silicon:    1000000,
+};
+
+module.exports = { resources: resources, recipes: recipes, supply: supply };

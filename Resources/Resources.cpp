@@ -120,7 +120,7 @@ namespace SFEOS {
                 auto current_resource = resources.get(_resource_id);
 
                 // Load the list of resources that this account has.
-                resource_ownership_table ownership(_self, _self); 
+                inventory_table ownership(_self, _self); 
 
                 auto iterator1 = ownership.find(account);
                 eosio_assert(iterator1 != ownership.end(), "Account not found");
@@ -188,7 +188,7 @@ namespace SFEOS {
              */ 
             void getinventory(const account_name account) {
                 
-                resource_ownership_table ownership(_self, _self);
+                inventory_table ownership(_self, _self);
 
                 auto iterator = ownership.find(account);
                 eosio_assert(iterator != ownership.end(), "Account not found");
@@ -224,7 +224,7 @@ namespace SFEOS {
 
         private:
             void updateResource(account_name account, uint64_t _resource_id, int64_t _quantity) {
-                resource_ownership_table ownership(_self, _self);
+                inventory_table ownership(_self, _self);
 
                 auto iterator = ownership.find(account);
                 if(iterator != ownership.end()) {
@@ -309,21 +309,21 @@ namespace SFEOS {
                 EOSLIB_SERIALIZE(resource_quantity, (resource_id)(quantity))
             };
 
-            //@abi table res_owner i64
-            struct res_owner {
+            //@abi table inventory i64
+            struct inventory {
                 account_name owner;
                 vector<resource_quantity> resources;
 
                 uint64_t primary_key() const { return owner; }
 
-                EOSLIB_SERIALIZE(res_owner, (owner)(resources))
+                EOSLIB_SERIALIZE(inventory, (owner)(resources))
             };
 
             /***********************************
              ** index declarations 
              **********************************/
             typedef multi_index<N(resource), resource> resources_table;
-            typedef multi_index<N(res_owner), res_owner> resource_ownership_table;
+            typedef multi_index<N(inventory), inventory> inventory_table;
 
     };
 
