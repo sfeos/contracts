@@ -2,12 +2,12 @@
   "name": "SFEOS",
   "version": "1.0.0",
   "description": "",
-  "main": "Tests/test-server.js",
+  "main": "node DApp/main.js",
   "keywords": [],
   "author": "",
   "license": "ISC",
   "scripts": {
-    "start": "node Tests/test-server.js --init"
+    "start": "node DApp/main.js --init"
   },
   "dependencies": {
     "child_process": "^1.0.2",
