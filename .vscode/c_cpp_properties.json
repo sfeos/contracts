@@ -5,13 +5,13 @@
             "browse": {
                 "path": [
                     "${workspaceFolder}",
-                    "C:\\Users\\John McCann\\Documents\\SFEOS\\eos\\contracts\\eosiolib"
+                    "C:\\repos\\eos\\contracts\\eosiolib"
                 ],
                 "limitSymbolsToIncludedHeaders": true
             },
             "includePath": [
                 "${workspaceFolder}",
-                "C:\\Users\\John McCann\\Documents\\SFEOS\\eos\\contracts\\eosiolib"
+                "C:\\repos\\eos\\contracts\\eosiolib"
             ],
             "defines": [
                 "_DEBUG",
